@@ -57,6 +57,7 @@
 		"@types/glob": "^7.2.0",
 		"@types/mocha": "^9.1.1",
 		"@types/node": "16.x",
+		"@types/to-json-schema": "^0.2.1",
 		"@types/vscode": "^1.68.0",
 		"@typescript-eslint/eslint-plugin": "^5.27.0",
 		"@typescript-eslint/parser": "^5.27.0",
@@ -70,7 +71,16 @@
 		"webpack-cli": "^4.9.2"
 	},
 	"dependencies": {
+		"@types/json-schema": "^7.0.11",
+		"change-case": "^4.1.2",
+		"dayjs": "^1.11.3",
+		"form-data": "^3",
 		"fs-extra": "^10.1.0",
+		"got": "^12.1.0",
+		"json-schema-to-typescript": "^10.1.4",
+		"json5": "^2.2.1",
+		"prettier": "^2.2.1",
+		"to-json-schema": "^0.2.5",
 		"vtils": "^4.61.0",
 		"yapi-to-typescript": "^3.34.0"
 	}

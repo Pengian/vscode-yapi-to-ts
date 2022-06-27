@@ -3,12 +3,13 @@ import { findDir } from '../../utils';
 import path from 'path';
 import fs from 'fs-extra';
 import { dedent } from 'vtils';
-import { command } from '../index';
 
 import type { Uri } from 'vscode';
 
 async function initConfigFile(file: Uri) {
-  console.warn('pengian-----------------');
+  console.warn('pengian-----------------', process.cwd());
+
+  fs.writeFile(path.resolve(__dirname, './storage.json'), JSON.stringify(['pengian']));
   try {
     // 获取激活指令的文件夹
     const dir = findDir(file.fsPath);
