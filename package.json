@@ -14,7 +14,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:yapi-to-ts.initConfig"
+		"*"
 	],
 	"main": "./dist/extension.js",
 	"icon": "logo.png",
@@ -23,12 +23,20 @@
 			{
 				"command": "yapi-to-ts.initConfig",
 				"title": "初始化yapi配置文件"
+			},
+			{
+				"command": "yapi-to-ts.generator",
+				"title": "生成yapi接口定义"
 			}
 		],
 		"menus": {
 			"commandPalette": [
 				{
-					"command": "yapi-to-ts.initConfig"
+					"command": "yapi-to-ts.initConfig",
+					"when": "false"
+				},
+				{
+					"command": "yapi-to-ts.generator"
 				}
 			],
 			"explorer/context": [
@@ -36,7 +44,7 @@
 					"command": "yapi-to-ts.initConfig",
 					"group": "navigation@1",
 					"label": "初始化yapi配置",
-					"when": "resourceFilename == package.json"
+					"when": "false && resourceFilename == package.json"
 				}
 			]
 		}

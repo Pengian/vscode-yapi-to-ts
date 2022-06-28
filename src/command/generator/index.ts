@@ -3,7 +3,8 @@ import dayjs from 'dayjs';
 import fs from 'fs-extra';
 import got from 'got';
 import path from 'path';
-import { castArray, cloneDeepFast, dedent, groupBy, isEmpty, isFunction, last, memoize, noop, omit, uniq, values } from 'vtils';
+import { castArray, cloneDeepFast, dedent, groupBy, isEmpty, isFunction, last, memoize, omit, uniq, values } from 'vtils';
+import prettier from 'prettier';
 import {
   CategoryList,
   CommentConfig,
@@ -20,7 +21,14 @@ import {
   ChangeCase,
 } from '../../types';
 import { exec } from 'child_process';
-import { getRequestDataJsonSchema, getResponseDataJsonSchema, jsonSchemaToType, sortByWeights, throwError } from '../../utils';
+import {
+  getCachedPrettierOptions,
+  getRequestDataJsonSchema,
+  getResponseDataJsonSchema,
+  jsonSchemaToType,
+  sortByWeights,
+  throwError,
+} from '../../utils';
 import * as vscode from 'vscode';
 
 import type { Uri } from 'vscode';
@@ -56,84 +64,107 @@ export class Generator {
    * @returns Promise
    */
   async prepare(uri: Uri): Promise<void> {
-    const workspaceUri = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0].uri;
-    const currentUri = uri || workspaceUri;
-    if (!currentUri) {
-      vscode.window.showErrorMessage('未打开工作区目录！');
-      return Promise.reject('未打开工作区目录！');
-    }
-    this.options.cwd = currentUri.fsPath;
-    const res = await vscode.window.showInputBox({
-      title: '部署域名/token',
-      placeHolder: '请输入yapi部署域名或项目token',
-      prompt: '自动识别域名/token，域名请携带http协议头',
-    });
-    if (!res) return Promise.reject();
-    const urlRegExp = /^https?:\/\/[\w\-/_.]{5,}$/;
-    const tokenRegExp = /^\w{64}$/;
-    if (urlRegExp.test(res)) {
-      this.url = res.replace(/\/+$/, '');
-      fs.writeFile(this.storagePath, this.url);
-      const token = await vscode.window.showInputBox({
-        title: '项目token',
-        placeHolder: '请输入项目token',
-        prompt: '项目token从项目-设置-token配置中获取',
-      });
-      if (!token) return Promise.reject();
-      if (tokenRegExp.test(token)) {
-        this.token = token;
-        return Promise.resolve();
+    const question = async (uri: Uri) => {
+      const workspaceUri = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0].uri;
+      const currentUri = uri || workspaceUri;
+      if (!currentUri) {
+        vscode.window.showErrorMessage('未打开工作区目录！');
+        return Promise.reject('未打开工作区目录！');
       }
-      vscode.window.showErrorMessage('请输入正确的项目token');
-      return Promise.reject('请输入正确的项目token');
-    } else if (tokenRegExp.test(res)) {
-      this.token = res;
-      this.url = fs.readFileSync(this.storagePath, 'utf8');
-      if (!this.url) {
-        const url = await vscode.window.showInputBox({
-          title: '部署域名',
-          placeHolder: '请输入部署完整的域名',
+      this.options.cwd = currentUri.fsPath;
+      const res = await vscode.window.showInputBox({
+        title: '部署域名/token',
+        placeHolder: '请输入yapi部署域名或项目token',
+        prompt: '自动识别域名/token，域名请携带http协议头',
+      });
+      if (!res) return Promise.reject('无效域名/token');
+      const isUrl = /.*https?:\/\/.*/;
+      const urlRegExp = /^https?:\/\/[\w\-/_.]{3,}(:\d{3,5}?\/?)$/;
+      const tokenRegExp = /^\w{64}$/;
+      if (isUrl.test(res) && !urlRegExp.test(res)) {
+        vscode.window.showErrorMessage('无效url');
+        return Promise.reject('无效url');
+      }
+      if (urlRegExp.test(res)) {
+        this.url = res.replace(/\/+$/, '');
+        fs.writeFile(this.storagePath, this.url);
+        console.warn('写入地址--------');
+        const token = await vscode.window.showInputBox({
+          title: '项目token',
+          placeHolder: '请输入项目token',
+          prompt: '项目token从项目-设置-token配置中获取',
         });
-        if (!url) return Promise.reject();
-        if (urlRegExp.test(url)) {
-          this.url = url.replace(/\/+$/, '');
-          fs.writeFile(this.storagePath, this.url);
+        if (!token) return Promise.reject('未知token');
+        if (tokenRegExp.test(token)) {
+          console.warn('写入token--------');
+          this.token = token;
           return Promise.resolve();
         }
-        vscode.window.showErrorMessage('请输入有效的部署域名');
-        return Promise.reject('请输入有效的部署域名');
-      }
-    } else {
-      vscode.window.showErrorMessage('请输入有效的部署域名/token');
-      return Promise.reject(new Error('请输入有效的部署域名/token'));
-    }
-    return Promise.resolve();
-  }
+        vscode.window.showErrorMessage('请输入正确的项目token');
+        return Promise.reject('请输入正确的项目token');
+      } else if (tokenRegExp.test(res)) {
+        this.token = res;
+        this.url = fs.readFileSync(this.storagePath, 'utf8');
+        if (!this.url) {
+          const url = await vscode.window.showInputBox({
+            title: '部署域名',
+            placeHolder: '请输入部署完整的域名',
+          });
+          if (!url) return Promise.reject('请输入完整域名');
 
-  setConfig() {
-    this.config = [
-      {
-        serverUrl: this.url,
-        typesOnly: true,
-        target: 'typescript',
-        reactHooks: {
-          enabled: false,
-        },
-        prodEnvName: 'production',
-        outputFilePath: 'yapi/index.ts',
-        dataKey: 'data',
-        projects: [
+          if (isUrl.test(res) && !urlRegExp.test(res)) {
+            vscode.window.showErrorMessage('无效url');
+            return Promise.reject('无效url');
+          }
+          if (urlRegExp.test(url)) {
+            this.url = url.replace(/\/+$/, '');
+            fs.writeFile(this.storagePath, this.url);
+            return Promise.resolve();
+          }
+          vscode.window.showErrorMessage('请输入有效的部署域名');
+          return Promise.reject('请输入有效的部署域名');
+        }
+      } else {
+        vscode.window.showErrorMessage('请输入有效的部署域名/token');
+        return Promise.reject(new Error('请输入有效的部署域名/token'));
+      }
+      return Promise.resolve();
+    };
+    return new Promise(async (resolve, reject) => {
+      try {
+        console.log('question-------------');
+        await question(uri);
+        console.log('config------------');
+
+        this.config = [
           {
-            token: this.token,
-            categories: [
+            serverUrl: this.url,
+            typesOnly: true,
+            target: 'typescript',
+            reactHooks: {
+              enabled: false,
+            },
+            prodEnvName: 'production',
+            outputFilePath: 'yapi/index.ts',
+            dataKey: 'data',
+            projects: [
               {
-                id: 0,
+                token: this.token,
+                categories: [
+                  {
+                    id: 0,
+                  },
+                ],
               },
             ],
           },
-        ],
-      },
-    ];
+        ];
+        resolve();
+      } catch (error) {
+        vscode.window.showErrorMessage(String(error));
+        reject('prepare error……');
+      }
+    });
   }
 
   async generate(): Promise<OutputFileList> {
@@ -156,6 +187,7 @@ export class Generator {
               ...serverConfig,
               ...projectConfig,
             });
+            console.log('----------------', projectInfo);
             await Promise.all(
               projectConfig.categories.map(async (categoryConfig, categoryIndex) => {
                 // 分类处理
@@ -300,10 +332,31 @@ export class Generator {
           syntheticalConfig,
         } = outputFileList[outputFilePath];
 
-        if (syntheticalConfig.target === 'javascript') {
-          await this.tsc(outputFilePath);
-          await Promise.all([fs.remove(outputFilePath).catch(noop)]);
-        }
+        // 始终写入主文件
+        const rawOutputContent = dedent`
+          /* tslint:disable */
+          /* eslint-disable */
+
+          /* 该文件由 yapi-to-typescript 自动生成，请勿直接修改！！！ */
+
+          ${dedent`
+                // @ts-ignore
+                type FileData = File
+
+                ${content.join('\n\n').trim()}
+              `}
+        `;
+        // ref: https://prettier.io/docs/en/options.html
+        const prettyOutputContent = prettier.format(rawOutputContent, {
+          ...(await getCachedPrettierOptions()),
+          filepath: outputFilePath,
+        });
+        const outputContent = `${dedent`
+          /* prettier-ignore-start */
+          ${prettyOutputContent}
+          /* prettier-ignore-end */
+        `}\n`;
+        await fs.outputFile(outputFilePath, outputContent);
       })
     );
   }
@@ -648,4 +701,22 @@ export class Generator {
   }
 }
 
-const generateFile = () => {};
+const generateFile = async (uri: Uri) => {
+  const generator = new Generator();
+  try {
+    await generator.prepare(uri);
+    vscode.window.showInformationMessage('正在生成文件……');
+    const output = await generator.generate();
+    console.warn('output-----------------', output);
+    await generator.write(output);
+    vscode.window.showInformationMessage('文件生成成功！');
+    await generator.destroy();
+  } catch (error) {
+    await generator?.destroy();
+    vscode.window.showErrorMessage('出错了');
+  }
+};
+
+const generatorCommandRegistry = vscode.commands.registerCommand('yapi-to-ts.generator', (file) => generateFile(file));
+
+export default [generatorCommandRegistry];
