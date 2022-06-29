@@ -26,7 +26,11 @@
 			},
 			{
 				"command": "yapi-to-ts.generator",
-				"title": "生成yapi接口定义"
+				"title": "生成yapi接口定义文件"
+			},
+			{
+				"command": "yapi-to-ts.last-config-to-generate",
+				"title": "沿用最近yapi配置"
 			}
 		],
 		"menus": {
@@ -37,6 +41,9 @@
 				},
 				{
 					"command": "yapi-to-ts.generator"
+				},
+				{
+					"command": "yapi-to-ts.last-config-to-generate"
 				}
 			],
 			"explorer/context": [
