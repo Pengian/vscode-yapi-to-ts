@@ -74,30 +74,33 @@ export class Generator {
         return Promise.reject('未打开工作区目录！');
       }
       this.options.cwd = currentUri.fsPath;
+      let url, token;
       if (fs.existsSync(this.urlStoragePath)) {
-        this.url = fs.readFileSync(this.urlStoragePath, 'utf8');
+        url = fs.readFileSync(this.urlStoragePath, 'utf8');
       }
       if (fs.existsSync(this.tokenStoragePath)) {
-        this.token = fs.readFileSync(this.tokenStoragePath, 'utf8');
+        token = fs.readFileSync(this.tokenStoragePath, 'utf8');
       }
-      if (isUseLastConfig && this.url && this.token) {
+      if (isUseLastConfig && url && token) {
+        this.url = url;
+        this.token = token;
         return Promise.resolve();
       }
-      const promptText = this.url ? `当前域名为${this.url}，你可直接输入token或重新输入域名` : '自动识别域名/token，域名请携带http协议头';
+      const promptText = url ? `当前域名为${url}，你可直接输入token或重新输入域名` : '自动识别域名/token，域名请携带http协议头';
       const res = await vscode.window.showInputBox({
         title: '部署域名/token',
         placeHolder: '请输入yapi部署域名或项目token',
         prompt: promptText,
       });
       if (!res) return Promise.reject('无效域名/token');
-      const isUrl = /.*https?:\/\/.*/;
-      const urlRegExp = /^https?:\/\/[\w\-/_.]{3,}(:\d{3,5}?\/?)$/;
+      const isUrl = /.+https?:\/\/.*/;
+      const urlRegExp = /^https?:\/\/[\da-z]+([.-]?[\da-z]+)*(:\d{2,})?\/?/;
       const tokenRegExp = /^\w{64}$/;
-      if (!this.url && isUrl.test(res) && !urlRegExp.test(res)) {
+      if (isUrl.test(res) && !urlRegExp.test(res)) {
         vscode.window.showErrorMessage('无效url');
         return Promise.reject('无效url');
       }
-      if (!this.url && urlRegExp.test(res)) {
+      if (urlRegExp.test(res)) {
         this.url = res.replace(/\/+$/, '');
         fs.writeFile(this.urlStoragePath, this.url);
         const token = await vscode.window.showInputBox({
@@ -114,9 +117,11 @@ export class Generator {
         vscode.window.showErrorMessage('请输入正确的项目token');
         return Promise.reject('请输入正确的项目token');
       } else if (tokenRegExp.test(res)) {
+        console.log('res   token', res);
+
         this.token = res;
         fs.writeFile(this.tokenStoragePath, this.token);
-        if (!this.url) {
+        if (!url) {
           const url = await vscode.window.showInputBox({
             title: '部署域名',
             placeHolder: '请输入部署完整的域名',
@@ -132,13 +137,15 @@ export class Generator {
             fs.writeFile(this.urlStoragePath, this.url);
             return Promise.resolve();
           }
-          vscode.window.showErrorMessage('请输入有效的部署域名');
           return Promise.reject('请输入有效的部署域名');
+        } else {
+          this.url = url;
+          return Promise.resolve();
         }
       } else {
-        vscode.window.showErrorMessage('请输入有效的部署域名/token');
-        return Promise.reject(new Error('请输入有效的部署域名/token'));
+        return Promise.reject(new Error('请输入有效的部署域名/token！'));
       }
+
       return Promise.resolve();
     };
     return new Promise(async (resolve, reject) => {
@@ -239,7 +246,7 @@ export class Generator {
                 // 顺序化
                 categoryIds = categoryIds.sort();
 
-                progress.report({ message: '接口请求中……' });
+                progress.report({ message: '获取相关接口信息……' });
                 const codes = (
                   await Promise.all(
                     categoryIds.map<
@@ -342,6 +349,7 @@ export class Generator {
                   )
                 ).flat();
 
+                progress.report({ message: '文件准备中……' });
                 for (const groupedCodes of values(groupBy(codes, (item) => item.outputFilePath))) {
                   sortByWeights(groupedCodes);
                   outputFileList[groupedCodes[0].outputFilePath].content.push(...groupedCodes.map((item) => item.code));
@@ -762,7 +770,6 @@ const generateFile = async (uri: Uri, isUseLastConfig: boolean = false) => {
         await generator.destroy();
       } catch (error) {
         await generator?.destroy();
-        // vscode.window.showWarningMessage('已中断……');
       }
     }
   );

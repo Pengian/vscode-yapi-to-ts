@@ -14,7 +14,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"*"
+		"workspaceContains:**/package.json"
 	],
 	"main": "./dist/extension.js",
 	"icon": "logo.png",
@@ -66,7 +66,7 @@
 		"pretest": "yarn run compile-tests && yarn run compile && yarn run lint",
 		"lint": "eslint src --ext ts",
 		"test": "node ./out/test/runTest.js",
-		"build": "vsce package"
+		"build": "vsce package --yarn"
 	},
 	"devDependencies": {
 		"@types/fs-extra": "^9.0.13",
