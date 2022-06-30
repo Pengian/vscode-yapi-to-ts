@@ -1,8 +1,8 @@
 {
 	"name": "yapi-to-ts",
 	"displayName": "yapi-to-ts",
-	"description": "a vsCode pligin fork by yapi-to-typescript",
-	"version": "0.0.1",
+	"description": "a vsCode plugin fork by yapi-to-typescript",
+	"version": "0.0.2",
 	"publisher": "pengian",
 	"repository": {
 		"url": "https://github.com/Pengian/vscode-yapi-to-ts.git"
@@ -14,7 +14,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"workspaceContains:**/package.json"
+		"*"
 	],
 	"main": "./dist/extension.js",
 	"icon": "logo.png",
