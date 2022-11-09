@@ -3,7 +3,7 @@ import dayjs from 'dayjs';
 import fs from 'fs-extra';
 import got from 'got';
 import path from 'path';
-import { castArray, cloneDeepFast, dedent, groupBy, isEmpty, isFunction, last, memoize, omit, uniq, values, wait } from 'vtils';
+import { castArray, cloneDeepFast, dedent, groupBy, isEmpty, isFunction, last, memoize, omit, uniq, values } from 'vtils';
 import prettier from 'prettier';
 import {
   Category,

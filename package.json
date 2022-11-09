@@ -98,7 +98,6 @@
 		"json5": "^2.2.1",
 		"prettier": "^2.2.1",
 		"to-json-schema": "^0.2.5",
-		"vtils": "^4.61.0",
-		"yapi-to-typescript": "^3.34.0"
+		"vtils": "^4.61.0"
 	}
 }

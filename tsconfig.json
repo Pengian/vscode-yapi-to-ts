@@ -1,13 +1,14 @@
 {
 	"compilerOptions": {
 		"strict": true,
-		"module": "commonjs",
+		"module": "esnext",
 		"moduleResolution": "node",
-		"target": "ES5",
+		"target": "es2020",
 		"lib": [
-			"ESNext",
+			"es2020",
 			"DOM"
 		],
+		"skipLibCheck": true,
 		"sourceMap": true,
 		"esModuleInterop": true,
 		"rootDir": "src"
